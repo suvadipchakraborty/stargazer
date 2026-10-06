@@ -23,7 +23,8 @@ Your pocket dashboard for the cosmos. Live ISS tracking, tonight's cloud cover a
 
 - Open-Meteo: cloud cover, visibility, sunrise and sunset (no key)
 - wheretheiss.at: ISS position, polled every 10 seconds (no key)
-- NASA APOD: uses a personal api.nasa.gov key set in `app.js` (it is visible to anyone who views the page source, so use a free key, not a sensitive one).
+- NASA APOD: science.nasa.gov `apod-basic` endpoint (no key). The old api.nasa.gov/planetary/apod was retired on 29 Sep 2026 and only returns a logo placeholder.
+- Map tiles: OpenStreetMap (no key), darkened with CSS.
 
 ## Notes
 

@@ -4,7 +4,8 @@
 const FALLBACK = { lat: 22.5726, lon: 88.3639, name: 'Kolkata' };
 const APIS = {
   iss: 'https://api.wheretheiss.at/v1/satellites/25544',
-  apod: 'https://api.nasa.gov/planetary/apod?api_key=8fvKLeYPHTQCaAaoqIJ16XiskR2R9jaeQiPuXnj7',
+  // NASA moved APOD to science.nasa.gov on 29 Sep 2026; the old api.nasa.gov endpoint now returns a logo placeholder. No key needed.
+  apod: 'https://science.nasa.gov/wp-json/wp/v2/apod-basic?per_page=1&_fields=date,title,media_type,explanation,credit,copyright,hdurl,url,permalink',
   weather: (lat, lon) =>
     `https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}` +
     `&hourly=cloudcover,visibility&daily=sunrise,sunset&timezone=auto&past_days=1&forecast_days=2`,
@@ -142,40 +143,67 @@ function setSkyMood(pct) {
 }
 
 /* ---------- NASA APOD ---------- */
+const APOD_CACHE_KEY = 'sg-apod-v2';
+const htmlToText = (html) => {
+  const d = new DOMParser().parseFromString(html || '', 'text/html');
+  return (d.body.textContent || '').replace(/\s+/g, ' ').trim();
+};
+function normalizeAPOD(raw) {
+  if (!raw || !raw.title || raw.title === 'NASA Science') throw new Error('APOD placeholder or empty response');
+  let text = htmlToText(raw.explanation).replace(/^Explanation:\s*/i, '');
+  // Drop APOD boilerplate that follows the explanation
+  const cut = text.search(/Your Sky Surprise|APOD's email|APOD's main NASA site|Tomorrow's picture/i);
+  if (cut > 0) text = text.slice(0, cut).trim();
+  let image = null;
+  if (raw.media_type === 'image' && raw.hdurl) {
+    try {
+      const u = new URL(raw.hdurl);
+      u.searchParams.set('w', '1280'); u.searchParams.set('h', '1280'); u.searchParams.set('fit', 'clip');
+      u.searchParams.delete('crop');
+      image = u.toString();
+    } catch (e) { image = raw.hdurl; }
+  }
+  const credit = htmlToText(raw.credit || raw.copyright).replace(/^Image Credit( & Copyright)?:\s*/i, '');
+  return {
+    title: htmlToText(raw.title), date: raw.date, explanation: text, credit,
+    media_type: raw.media_type, image, link: raw.permalink || raw.url || 'https://science.nasa.gov/apod/',
+  };
+}
 async function loadAPOD() {
   let data;
   try {
-    data = await getJSON(APIS.apod);
-    localStorage.setItem('sg-apod', JSON.stringify(data));
+    const list = await getJSON(APIS.apod);
+    data = normalizeAPOD(Array.isArray(list) ? list[0] : list);
+    localStorage.setItem(APOD_CACHE_KEY, JSON.stringify(data));
   } catch (e) {
-    const cached = localStorage.getItem('sg-apod');
-    if (!cached) { $('#apodTitle').textContent = 'Picture unavailable right now'; $('#apodText').textContent = 'NASA could not be reached. Try again in a minute.'; throw e; }
+    const cached = localStorage.getItem(APOD_CACHE_KEY);
+    if (!cached) { $('#apodTitle').textContent = 'Picture unavailable right now'; $('#apodText').textContent = 'NASA could not be reached. Try again in a minute.'; $('#heroBg').classList.add('ready'); throw e; }
     data = JSON.parse(cached);
     toast('Showing the last saved picture');
   }
   apod = data;
-  const img = data.media_type === 'image' ? data.url : (data.thumbnail_url || null);
   $('#apodTitle').textContent = data.title;
   $('#apodDate').textContent = new Date(data.date + 'T12:00:00').toLocaleDateString(undefined, { dateStyle: 'long' });
   $('#apodText').textContent = data.explanation;
-  $('#apodCredit').textContent = data.copyright ? `Image credit: ${data.copyright.replace(/\s+/g, ' ').trim()}` : 'Image credit: NASA';
-  if (img) {
+  $('#apodCredit').textContent = data.credit ? `Image credit: ${data.credit}` : 'Image credit: NASA';
+  if (data.image) {
     const pre = new Image();
-    pre.onload = () => { const bg = $('#heroBg'); bg.style.backgroundImage = `url("${img}")`; bg.classList.add('ready'); };
+    pre.onload = () => { const bg = $('#heroBg'); bg.style.backgroundImage = `url("${data.image}")`; bg.classList.add('ready'); };
     pre.onerror = () => $('#heroBg').classList.add('ready');
-    pre.src = img;
+    pre.src = data.image;
   } else $('#heroBg').classList.add('ready');
 }
+try { localStorage.removeItem('sg-apod'); } catch (e) {} // old cache may hold the placeholder
 $('#shareBtn').addEventListener('click', async () => {
   if (!apod) return toast('Picture is still loading');
   const shareData = {
     title: apod.title,
     text: `${apod.title}: NASA's Astronomy Picture of the Day, via Stargazer`,
-    url: apod.media_type === 'image' ? (apod.hdurl || apod.url) : apod.url,
+    url: apod.link,
   };
   try {
     if (navigator.share) await navigator.share(shareData);
-    else { await navigator.clipboard.writeText(shareData.url); toast('Image link copied'); }
+    else { await navigator.clipboard.writeText(shareData.url); toast('Link copied'); }
   } catch (e) { if (e.name !== 'AbortError') toast('Could not share'); }
 });
 
@@ -186,8 +214,9 @@ function initMap() {
   if (mapReady || typeof L === 'undefined') return;
   mapReady = true;
   map = L.map('map', { zoomControl: false, worldCopyJump: true, minZoom: 1 }).setView([20, 0], 2);
-  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-    attribution: '&copy; OpenStreetMap contributors &copy; CARTO', subdomains: 'abcd', maxZoom: 8,
+  // Keyless OpenStreetMap tiles, darkened with CSS (.dark-tiles). CARTO's free tiles now require an API key.
+  L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors', maxZoom: 8, className: 'dark-tiles',
   }).addTo(map);
   L.control.zoom({ position: 'bottomright' }).addTo(map);
   trailLayer = L.polyline([], { color: '#5ee7ff', weight: 2, opacity: 0.8, dashArray: '2 6' }).addTo(map);

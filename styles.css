@@ -68,6 +68,7 @@ button{font:inherit;color:inherit;cursor:pointer}
 .iss-marker{font-size:26px;line-height:1;filter:drop-shadow(0 0 8px var(--cyan));text-align:center}
 .me-marker{width:12px;height:12px;border-radius:50%;background:var(--violet);border:2px solid #fff;box-shadow:0 0 12px var(--violet)}
 .leaflet-container{font-family:Manrope,sans-serif}
+.leaflet-tile.dark-tiles{filter:invert(1) hue-rotate(200deg) brightness(.82) contrast(.9) saturate(.7)}
 .leaflet-control-attribution{background:rgba(5,9,20,.7)!important;color:var(--muted)!important}
 .leaflet-control-attribution a{color:var(--cyan)!important}
 
