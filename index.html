@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Stargazer — Your pocket dashboard for the cosmos</title>
+<meta name="description" content="Live ISS tracking, tonight's cloud cover and visibility, moon phase, and the NASA Astronomy Picture of the Day.">
+<meta name="theme-color" content="#050914">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icons/icon-192.png">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Stargazer">
+<meta property="og:title" content="Stargazer — Your pocket dashboard for the cosmos">
+<meta property="og:description" content="Live ISS tracking, local cloud cover and visibility, moon phase, and the daily NASA APOD.">
+<meta property="og:url" content="https://stargazer.suvadipchakraborty.workers.dev/">
+<meta property="og:image" content="https://stargazer.suvadipchakraborty.workers.dev/preview.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="Stargazer — Your pocket dashboard for the cosmos">
+<meta name="twitter:description" content="Live ISS tracking, local cloud cover and visibility, moon phase, and the daily NASA APOD.">
+<meta name="twitter:image" content="https://stargazer.suvadipchakraborty.workers.dev/preview.png">
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Instrument+Serif&family=Manrope:wght@400;500;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<main>
+  <!-- SKY TONIGHT -->
+  <section id="tab-sky" class="tab active" aria-labelledby="nav-sky">
+    <header class="hero" id="hero">
+      <div class="hero-bg" id="heroBg"></div>
+      <div class="hero-shade"></div>
+      <button class="icon-btn share" id="shareBtn" aria-label="Share this picture" title="Share">
+        <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="18" cy="5" r="3"/><circle cx="6" cy="12" r="3"/><circle cx="18" cy="19" r="3"/><path d="M8.6 13.5l6.8 4M15.4 6.5l-6.8 4"/></svg>
+      </button>
+      <div class="hero-text">
+        <p class="hero-kicker">NASA picture of the day</p>
+        <h1 id="apodTitle">Loading the cosmos…</h1>
+        <p class="hero-date" id="apodDate"></p>
+      </div>
+    </header>
+
+    <div class="stack">
+      <article class="card" id="forecastCard">
+        <div class="card-head">
+          <h2>Tonight's sky</h2>
+          <span class="chip" id="locLabel">Locating…</span>
+        </div>
+        <div class="forecast">
+          <div class="big-icon" id="skyIcon" aria-hidden="true">✨</div>
+          <div>
+            <p class="stat"><span id="cloudPct">--</span><small>% cloud cover</small></p>
+            <p class="verdict" id="verdict">Checking the clouds…</p>
+          </div>
+        </div>
+        <dl class="facts">
+          <div><dt>Visibility</dt><dd id="visRange">--</dd></div>
+          <div><dt>Dark from</dt><dd id="sunsetT">--</dd></div>
+          <div><dt>Until</dt><dd id="sunriseT">--</dd></div>
+        </dl>
+      </article>
+
+      <article class="card moon-card">
+        <svg id="moonSvg" viewBox="0 0 100 100" width="104" height="104" role="img" aria-label="Current moon phase"></svg>
+        <div>
+          <h2 id="moonName">--</h2>
+          <p class="muted"><span id="moonIllum">--</span>% illuminated</p>
+          <p class="muted" id="moonNote"></p>
+        </div>
+      </article>
+
+      <details class="card apod-more">
+        <summary>About today's picture</summary>
+        <p id="apodText">…</p>
+        <p class="muted" id="apodCredit"></p>
+      </details>
+    </div>
+  </section>
+
+  <!-- ISS TRACKER -->
+  <section id="tab-iss" class="tab" aria-labelledby="nav-iss">
+    <div class="iss-top">
+      <p class="hero-kicker">International Space Station</p>
+      <div class="coords">
+        <div class="coord"><span class="coord-label">Latitude</span><span class="coord-val" id="issLat">--</span></div>
+        <div class="coord"><span class="coord-label">Longitude</span><span class="coord-val" id="issLon">--</span></div>
+        <div class="coord"><span class="coord-label">Altitude</span><span class="coord-val" id="issAlt">--</span></div>
+      </div>
+      <p class="muted iss-meta"><span class="live-dot" id="liveDot"></span><span id="issStatus">Connecting…</span> <span id="issSpeed"></span></p>
+    </div>
+    <div id="map" aria-label="Map showing the ISS position and recent path"></div>
+  </section>
+
+  <!-- ABOUT -->
+  <section id="tab-about" class="tab" aria-labelledby="nav-about">
+    <div class="stack about">
+      <img class="about-logo" src="icons/icon-192.png" alt="" width="84" height="84">
+      <h1 class="about-title">Stargazer</h1>
+      <p class="tagline">Your pocket dashboard for the cosmos.</p>
+
+      <article class="card">
+        <h2>Features</h2>
+        <ul>
+          <li>Live ISS tracking, refreshed every 10 seconds</li>
+          <li>Local cloud cover and visibility forecasts for tonight</li>
+          <li>Dynamic moon phase calculations</li>
+          <li>The daily NASA Astronomy Picture of the Day</li>
+        </ul>
+      </article>
+      <article class="card">
+        <h2>Why use it</h2>
+        <p>Helps astrophotographers and stargazers know exactly when to take their telescopes outside.</p>
+      </article>
+      <article class="card">
+        <h2>Credits</h2>
+        <p>Built using <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo</a>, <a href="https://api.nasa.gov/" target="_blank" rel="noopener">NASA APIs</a>, and <a href="https://wheretheiss.at/" target="_blank" rel="noopener">wheretheiss.at</a>. Map tiles by CARTO and OpenStreetMap contributors.</p>
+      </article>
+
+      <button class="btn" id="installBtn">Install app</button>
+      <p class="muted center" id="installHint"></p>
+    </div>
+  </section>
+</main>
+
+<nav class="bottom-nav" role="tablist" aria-label="Sections">
+  <button role="tab" id="nav-sky" data-tab="sky" class="active" aria-selected="true"><span class="ni">🔭</span><span>Sky Tonight</span></button>
+  <button role="tab" id="nav-iss" data-tab="iss" aria-selected="false"><span class="ni">🛰️</span><span>ISS Tracker</span></button>
+  <button role="tab" id="nav-about" data-tab="about" aria-selected="false"><span class="ni">ℹ️</span><span>About</span></button>
+</nav>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="app.js"></script>
+</body>
+</html>
